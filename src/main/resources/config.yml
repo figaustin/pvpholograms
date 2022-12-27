@@ -1,0 +1,9 @@
+world_name: 'world'
+pvpregion: 'pvp'
+
+hologram_title: Dominating Gangs
+hologram_lines: %number%. %gang_name% - %kill_count% kills
+max_size: 5
+
+#Don't touch
+cached_locations:

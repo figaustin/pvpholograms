@@ -1,0 +1,8 @@
+name: PvPHolograms
+version: '${project.version}'
+main: com.etsuni.pvpholograms.PvPHolograms
+api-version: 1.19
+depend: [ GangsPlus, WorldGuard, DecentHolograms ]
+commands:
+  pvpholograms:
+    description: PvPHolograms commands
