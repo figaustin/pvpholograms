@@ -5,5 +5,7 @@ hologram_title: Dominating Gangs
 hologram_lines: %number%. %gang_name% - %kill_count% kills
 max_size: 5
 
+gang_remove_time: 60
+
 #Don't touch
 cached_locations:

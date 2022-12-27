@@ -53,7 +53,7 @@ public class HologramUtils implements Listener {
         section.set("location", location);
         plugin.saveCfg();
     }
-    
+
     public void createHolo(String name, Location location, List<String> lines) {
         DHAPI.createHologram(name, location, true, lines);
         ConfigurationSection section = plugin.getHologramsConfig().getConfigurationSection("cached_locations" + name) == null ?
@@ -63,7 +63,6 @@ public class HologramUtils implements Listener {
         section.set("location", location);
         plugin.saveCfg();
     }
-
 
     public void updateHolos() {
 
@@ -124,8 +123,7 @@ public class HologramUtils implements Listener {
             public void run() {
 
                 Map<Player, Gang> gangMap = new HashMap<>();
-
-                for(Player player : Bukkit.getWorld("world").getPlayers()) {
+                for(Player player : Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers()) {
                     if(GangsPlusApi.isInGang(player)) {
                         gangMap.put(player, GangsPlusApi.getPlayersGang(player));
                         Location location = player.getLocation();
@@ -155,7 +153,7 @@ public class HologramUtils implements Listener {
                     }
                 }
             }
-        },0, 100);
+        },0, plugin.getHologramsConfig().getInt("gang_remove_time") * 20L);
     }
 
     public Boolean isLocationInPvpRegion(Location location) {
