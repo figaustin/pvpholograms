@@ -28,7 +28,6 @@ public final class PvPHolograms extends JavaPlugin {
         hologramUtils.hologramLoop();
 
         this.getServer().getPluginManager().registerEvents(hologramUtils, this);
-        this.getCommand("pvpholograms").setExecutor(new Commands());
     }
 
     @Override

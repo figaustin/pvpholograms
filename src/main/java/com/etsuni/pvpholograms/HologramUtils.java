@@ -20,6 +20,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitScheduler;
 
 import java.util.*;
@@ -31,47 +33,40 @@ public class HologramUtils implements Listener {
     @EventHandler
     public void onKill(PlayerDeathEvent event) {
         Player killed = event.getEntity();
-        Player killer = killed.getKiller() != null ? killed.getKiller() : null;
+        Player killer = killed.getKiller();
+
+        if(killer == null) {
+            return;
+        }
+
+        if(GangsPlusApi.getPlayersGang(killer) == null) {
+            return;
+        }
 
         if(isLocationInPvpRegion(killed.getLocation())) {
-            if(GangsInRegion.getInstance().getGangsList().containsKey(GangsPlusApi.getPlayersGang(killer))) {
+            if(GangsInRegion.getInstance().getGangsKills().containsKey(GangsPlusApi.getPlayersGang(killer))) {
                 //Add one to player's gangs score
-                GangsInRegion.getInstance().getGangsList().replace(GangsPlusApi.getPlayersGang(killer),
-                        GangsInRegion.getInstance().getGangsList().get(GangsPlusApi.getPlayersGang(killer)) + 1);
-                updateHolos();
+                GangsInRegion.getInstance().getGangsKills().replace(GangsPlusApi.getPlayersGang(killer),
+                        GangsInRegion.getInstance().getGangsKills().get(GangsPlusApi.getPlayersGang(killer)) + 1);
+                try{
+                    updateHolos();
+                }catch (Exception e){}
+
             }
         }
 
     }
 
-    public void createHolo(String name, Location location) {
-        DHAPI.createHologram(name, location, true);
-        ConfigurationSection section = plugin.getHologramsConfig().getConfigurationSection("cached_locations" + name) == null ?
-                plugin.getHologramsConfig().createSection("cached_locations." + name)
-                : plugin.getHologramsConfig().getConfigurationSection("cached_locations." + name);
-
-        section.set("location", location);
-        plugin.saveCfg();
-    }
-
-    public void createHolo(String name, Location location, List<String> lines) {
-        DHAPI.createHologram(name, location, true, lines);
-        ConfigurationSection section = plugin.getHologramsConfig().getConfigurationSection("cached_locations" + name) == null ?
-                plugin.getHologramsConfig().createSection("cached_locations." + name)
-                : plugin.getHologramsConfig().getConfigurationSection("cached_locations." + name);
-
-        section.set("location", location);
-        plugin.saveCfg();
-    }
-
     public void updateHolos() {
 
-        for(String s : plugin.getHologramsConfig().getConfigurationSection("cached_locations").getKeys(false)) {
+
+        for(String s : plugin.getHologramsConfig().getStringList("holograms")) {
             Configuration config = plugin.getHologramsConfig();
             if(DHAPI.getHologram(s) != null) {
-//                Hologram hologram = DHAPI.getHologram(s);
-                Location location = (Location) plugin.getHologramsConfig().get("cached_locations." + s + ".location");
-                DHAPI.removeHologram(s);
+
+                Hologram hologram = DHAPI.getHologram(s);
+                //Location location = (Location) plugin.getHologramsConfig().get("cached_locations." + s + ".location");
+                //DHAPI.removeHologram(s);
 
                 List<String> lines = new ArrayList<>();
 
@@ -92,13 +87,17 @@ public class HologramUtils implements Listener {
                 }
                 Collections.reverse(lines);
                 lines.add(0, plugin.getHologramsConfig().getString("hologram_title"));
-                createHolo(s, location, lines);
+                //createHolo(s, location, lines);
+                try {
+                    DHAPI.setHologramLines(hologram, lines);
+                } catch (Exception e) {}
+
             }
         }
     }
 
     public HashMap<Gang, Integer> sortByValue() {
-        List<Map.Entry<Gang, Integer>> list = new LinkedList<Map.Entry<Gang, Integer>>(GangsInRegion.getInstance().getGangsList().entrySet());
+        List<Map.Entry<Gang, Integer>> list = new LinkedList<Map.Entry<Gang, Integer>>(GangsInRegion.getInstance().getGangsKills().entrySet());
 
         Collections.sort(list, new Comparator<Map.Entry<Gang, Integer>>() {
             @Override
@@ -118,33 +117,38 @@ public class HologramUtils implements Listener {
 
         BukkitScheduler scheduler = Bukkit.getServer().getScheduler();
 
-        scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
+        //Check if new gang in region
+        scheduler.runTaskTimerAsynchronously(plugin, new Runnable() {
             @Override
             public void run() {
+                if(Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers() != null) {
+                    for (Player player : Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers()) {
+                            if (isLocationInPvpRegion(player.getLocation())) {
 
-                Map<Player, Gang> gangMap = new HashMap<>();
-                for(Player player : Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers()) {
-                    if(GangsPlusApi.isInGang(player)) {
-                        gangMap.put(player, GangsPlusApi.getPlayersGang(player));
-                        Location location = player.getLocation();
-                        if(isLocationInPvpRegion(location)) {
-                            Gang gang = gangMap.get(player);
-                            if(!GangsInRegion.getInstance().getGangsList().containsKey(gang)) {
-                                GangsInRegion.getInstance().getGangsList().put(gang, 0);
-                                try{
-                                    updateHolos();
-                                } catch (Exception e){
+                                Gang gang = GangsPlusApi.getPlayersGang(player);
+                                if (!GangsInRegion.getInstance().getGangsList().containsKey(gang)) {
+                                    GangsInRegion.getInstance().addToMaps(gang);
+                                    try {
+                                        updateHolos();
+                                    } catch (Exception e) {
 
+                                    }
                                 }
-
                             }
                         }
                     }
                 }
+        },0, 20);
 
-                for(Gang gang : gangMap.values()) {
+        scheduler.runTaskTimerAsynchronously(plugin, new Runnable() {
+            @Override
+            public void run() {
+                for(Gang gang : GangsInRegion.getInstance().getGangsList().keySet()) {
+                    if(gang == null) {
+                        continue;
+                    }
                     if(!isGangInRegion(gang)) {
-                        GangsInRegion.getInstance().getGangsList().remove(gang);
+                        GangsInRegion.getInstance().removeFromMaps(gang);
                         try{
                             updateHolos();
                         } catch (Exception e){
