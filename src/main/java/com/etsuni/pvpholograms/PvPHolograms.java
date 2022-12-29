@@ -86,7 +86,7 @@ public final class PvPHolograms extends JavaPlugin {
                     HologramPositions.getInstance().getPositions().put(hologram, hologram.getLocation());
                 }
             }
-        }, 60);
+        }, 100);
     }
 
 }
