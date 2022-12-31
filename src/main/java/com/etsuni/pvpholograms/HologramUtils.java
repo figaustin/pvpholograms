@@ -162,7 +162,10 @@ public class HologramUtils implements Listener {
     }
 
     public Boolean isGangInRegion(Gang gang) {
-        Set<Player> gangMembers = gang.getOnlineMembers();
+        Set<Player> gangMembers = gang.getOnlineMembers() == null ? null : gang.getOnlineMembers() ;
+        if(gangMembers == null) {
+            return false;
+        }
         boolean gangInRegion = false;
 
         for(Player player : gangMembers) {
