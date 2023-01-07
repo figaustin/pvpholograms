@@ -12,6 +12,7 @@ public class GangsInRegion {
     private Map<Gang, Long> gangsList = new HashMap<>();
     private Map<Gang, Integer> gangsKills = new HashMap<>();
     private Map<Gang, Integer> taskIds = new HashMap<>();
+    private List<String> gangsStrings = new ArrayList<>();
     public static GangsInRegion instance = new GangsInRegion();
 
     public static GangsInRegion getInstance() {
@@ -40,5 +41,13 @@ public class GangsInRegion {
 
     public Map<Gang, Integer> getTaskIds() {
         return taskIds;
+    }
+
+    public List<String> getGangsStrings() {
+        return gangsStrings;
+    }
+
+    public void setGangsStrings(List<String> list) {
+        gangsStrings = list;
     }
 }

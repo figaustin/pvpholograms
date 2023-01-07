@@ -4,8 +4,6 @@ import com.sk89q.worldguard.bukkit.RegionContainer;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import eu.decentsoftware.holograms.api.DHAPI;
-import eu.decentsoftware.holograms.api.holograms.Hologram;
 import net.brcdev.gangs.GangsPlugin;
 import net.brcdev.gangs.GangsPlusApi;
 import net.brcdev.gangs.gang.Gang;
@@ -43,46 +41,40 @@ public class HologramUtils implements Listener {
                 //Add one to player's gangs score
                 GangsInRegion.getInstance().getGangsKills().replace(GangsPlusApi.getPlayersGang(killer),
                         GangsInRegion.getInstance().getGangsKills().get(GangsPlusApi.getPlayersGang(killer)) + 1);
-                try{
-                    updateHolos();
-                }catch (Exception e){}
 
+                updateList();
             }
         }
     }
 
-    public void updateHolos() {
-        Map<Hologram, Location> holos = HologramPositions.getInstance().getPositions();
-        for(Hologram hologram : holos.keySet()) {
-            if(hologram != null) {
-                Configuration config = plugin.getHologramsConfig();
-                hologram.delete();
-                HologramPositions.getInstance().getPositions().remove(hologram);
+    public void updateList() {
 
-                List<String> lines = new ArrayList<>();
+        Configuration config = plugin.getHologramsConfig();
 
-                Map<Gang, Integer> gangsKills = sortByValue();
+        List<String> lines = new ArrayList<>();
 
-                int count = 0;
-                for(Map.Entry<Gang, Integer> entry : gangsKills.entrySet()) {
-                    if(count < config.getInt("max_size")) {
+        Map<Gang, Integer> gangsKills = sortByValue();
 
-                        String line = config.getString("hologram_lines")
-                                .replace("%number%", Integer.toString(gangsKills.size() - count))
-                                .replace("%gang_name%", GangsPlugin.getInstance().getGangManager().getGang(entry.getKey().getName()).getName())
-                                .replace("%kill_count%", entry.getValue().toString());
-                        lines.add(line);
-                        count++;
-                    }
-                }
-                Collections.reverse(lines);
-                lines.add(0, plugin.getHologramsConfig().getString("hologram_title"));
-                Hologram newHologram = DHAPI.createHologram(hologram.getName(), hologram.getLocation(), true, lines);
-                HologramPositions.getInstance().getPositions().put(newHologram, newHologram.getLocation());
+        int count = 0;
+        for(Map.Entry<Gang, Integer> entry : gangsKills.entrySet()) {
+            if(count < config.getInt("max_size")) {
 
+                String line = config.getString("hologram_lines")
+                        .replace("%number%", Integer.toString(gangsKills.size() - count))
+                        .replace("%gang_name%", GangsPlugin.getInstance().getGangManager().getGang(entry.getKey().getName()).getName())
+                        .replace("%kill_count%", entry.getValue().toString());
+                lines.add(line);
+                count++;
             }
         }
+        Collections.reverse(lines);
+        while(lines.size() < config.getInt("max_size")) {
+            lines.add("");
+        }
+        GangsInRegion.getInstance().getGangsStrings().clear();
+        GangsInRegion.getInstance().setGangsStrings(lines);
     }
+
 
     public HashMap<Gang, Integer> sortByValue() {
         List<Map.Entry<Gang, Integer>> list = new LinkedList<Map.Entry<Gang, Integer>>(GangsInRegion.getInstance().getGangsKills().entrySet());
@@ -112,14 +104,11 @@ public class HologramUtils implements Listener {
                 if (Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers() != null) {
                     for (Player player : Bukkit.getWorld(plugin.getHologramsConfig().getString("world_name")).getPlayers()) {
                         if (isLocationInPvpRegion(player.getLocation())) {
-
-                            Gang gang = GangsPlusApi.getPlayersGang(player);
-                            if (!GangsInRegion.getInstance().getGangsList().containsKey(gang)) {
-                                GangsInRegion.getInstance().addToMaps(gang);
-                                try {
-                                    updateHolos();
-                                } catch (Exception e) {
-
+                            if (GangsPlusApi.isInGang(player)) {
+                                Gang gang = GangsPlusApi.getPlayersGang(player);
+                                if (!GangsInRegion.getInstance().getGangsList().containsKey(gang)) {
+                                    GangsInRegion.getInstance().addToMaps(gang);
+                                    updateList();
                                 }
                             }
                         }
@@ -130,6 +119,10 @@ public class HologramUtils implements Listener {
     }
 
     public void gangChecker(Gang gang) {
+
+        if(gang == null) {
+            return;
+        }
 
         if(!GangsInRegion.getInstance().getGangsList().containsKey(gang)) {
             return;
@@ -143,9 +136,8 @@ public class HologramUtils implements Listener {
             public void run() {
                 if(!isGangInRegion(gang)) {
                     GangsInRegion.getInstance().removeFromMaps(gang);
-                    updateHolos();
+                    updateList();
                     scheduler.cancelTask(GangsInRegion.getInstance().getTaskIds().get(gang));
-
                 }
             }
         },plugin.getHologramsConfig().getInt("gang_remove_time") * 20L, plugin.getHologramsConfig().getInt("gang_remove_time") * 20L);
@@ -162,7 +154,11 @@ public class HologramUtils implements Listener {
     }
 
     public Boolean isGangInRegion(Gang gang) {
-        Set<Player> gangMembers = gang.getOnlineMembers() == null ? null : gang.getOnlineMembers() ;
+        if(gang == null) {
+            return false;
+        }
+
+        Set<Player> gangMembers = gang.getOnlineMembers() == null ? null : gang.getOnlineMembers();
         if(gangMembers == null) {
             return false;
         }

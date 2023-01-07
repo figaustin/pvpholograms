@@ -1,19 +1,15 @@
 package com.etsuni.pvpholograms;
 
-import eu.decentsoftware.holograms.api.DHAPI;
-import eu.decentsoftware.holograms.api.holograms.Hologram;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.configuration.Configuration;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitScheduler;
+
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Logger;
 
 public final class PvPHolograms extends JavaPlugin {
@@ -25,13 +21,16 @@ public final class PvPHolograms extends JavaPlugin {
 
     private static final Logger log = Logger.getLogger("Minecraft");
 
+    private final HologramUtils hologramUtils = new HologramUtils();
+
     @Override
     public void onEnable() {
+        if(Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            new PvPHologramsExpansion(this).register();
+        }
         plugin = this;
         createHologramsConfig();
-        cacheHolos();
-        HologramUtils hologramUtils = new HologramUtils();
-        hologramUtils.updateHolos();
+        hologramUtils.updateList();
         hologramUtils.hologramLoop();
 
         this.getServer().getPluginManager().registerEvents(hologramUtils, this);
@@ -40,6 +39,12 @@ public final class PvPHolograms extends JavaPlugin {
     @Override
     public void onDisable() {
     }
+
+    public List<String> getGangString() {
+        return GangsInRegion.getInstance().getGangsStrings();
+    }
+
+
 
     private void createHologramsConfig() {
         customConfigFile = new File(getDataFolder(), "config.yml");
@@ -68,25 +73,6 @@ public final class PvPHolograms extends JavaPlugin {
 
     public FileConfiguration getHologramsConfig() {
         return this.customConfig;
-    }
-
-    public void cacheHolos() {
-        log.info(String.format("[%s] Trying to cache holograms...", getDescription().getName()));
-        BukkitScheduler scheduler = getServer().getScheduler();
-        scheduler.scheduleSyncDelayedTask(this, new Runnable() {
-            @Override
-            public void run() {
-                for(String s : customConfig.getStringList("holograms")) {
-                    Hologram hologram = DHAPI.getHologram(s);
-
-                    if(hologram == null) {
-                        continue;
-                    }
-                    log.info(String.format("[%s] Cached " + s + " hologram", getDescription().getName()));
-                    HologramPositions.getInstance().getPositions().put(hologram, hologram.getLocation());
-                }
-            }
-        }, 100);
     }
 
 }
